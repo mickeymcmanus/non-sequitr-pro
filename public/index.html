@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Non-sequitR Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-size: 2.8rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #fff, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .setup-screen, .training-screen {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .setup-screen h2, .training-screen h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .setup-screen p, .training-screen p {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .name-input {
+            width: 100%;
+            max-width: 400px;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .name-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .name-input:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+
+        .rhyme-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            margin: 2rem 0;
+            line-height: 2;
+            font-style: italic;
+        }
+
+        .training-instruction {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #ffd700;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            color: white;
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .connection-status {
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+
+        .connected {
+            background: linear-gradient(45deg, rgba(46, 204, 113, 0.3), rgba(52, 152, 219, 0.3));
+        }
+
+        .disconnected {
+            background: linear-gradient(45deg, rgba(231, 76, 60, 0.3), rgba(192, 57, 43, 0.3));
+        }
+
+        .room-info {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        .room-code {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffd700;
+            letter-spacing: 3px;
+        }
+
+        .conversation {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-bottom: 1.5rem;
+            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.15);
+            padding: 1rem;
+        }
+
+        .conversation::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .conversation::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .conversation::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        .message-pair {
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .message {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+        }
+
+        .original {
+            background: rgba(255, 255, 255, 0.12);
+            border-left: 4px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .translated {
+            background: linear-gradient(45deg, rgba(255, 107, 107, 0.25), rgba(254, 202, 87, 0.25));
+            border-left: 4px solid #ffd700;
+        }
+
+        .translated .changed-word {
+            font-weight: bold;
+            color: #ffd700;
+            text-decoration: underline;
+            text-decoration-style: wavy;
+        }
+
+        .echo {
+            background: linear-gradient(45deg, rgba(155, 89, 182, 0.25), rgba(142, 68, 173, 0.25));
+            border-left: 4px solid #9b59b6;
+            font-style: italic;
+        }
+
+        .callback {
+            background: linear-gradient(45deg, rgba(52, 152, 219, 0.25), rgba(41, 128, 185, 0.25));
+            border-left: 4px solid #3498db;
+            font-style: italic;
+        }
+
+        .message-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .speaker-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .message-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .settings {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .setting-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .slider {
+            width: 200px;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffd700;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .participants-online {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .participant-online {
+            padding: 0.5rem 1rem;
+            background: rgba(46, 204, 113, 0.3);
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .listening {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 Non-sequitR Pro</h1>
+        <p class="subtitle">Multi-Device DDOS • Voice Training • Contextual Humor</p>
+
+        <!-- Setup Screen -->
+        <div id="setupScreen" class="setup-screen">
+            <h2>Join or Create Room</h2>
+            <p>Enter your name and either join an existing room or create a new one!</p>
+            
+            <input 
+                type="text" 
+                id="nameInput" 
+                class="name-input" 
+                placeholder="Your name..."
+                maxlength="20"
+            />
+            <br>
+            <input 
+                type="text" 
+                id="roomCodeInput" 
+                class="name-input" 
+                placeholder="Room code (leave empty to create new)"
+                maxlength="6"
+                style="text-transform: uppercase;"
+            />
+            <br>
+            <button id="joinBtn" class="btn btn-primary">🚀 Join / Create Room</button>
+            <br><br>
+            <p style="font-size: 0.9rem; opacity: 0.7;">
+                Note: This version requires a backend server. For local testing, it will simulate multi-user features.
+            </p>
+        </div>
+
+        <!-- Voice Training Screen -->
+        <div id="trainingScreen" class="training-screen hidden">
+            <h2>🎤 Voice Training</h2>
+            <p>Say this silly rhyme three times so the app can learn your voice!</p>
+            
+            <div class="rhyme-display" id="rhymeDisplay"></div>
+            
+            <div class="training-instruction">
+                Recordings: <span id="recordingCount">0/3</span>
+            </div>
+            
+            <button id="recordRhymeBtn" class="btn btn-primary">🎙️ Record Rhyme</button>
+            <button id="skipTrainingBtn" class="btn btn-secondary">Skip Training</button>
+        </div>
+
+        <!-- Main App Screen -->
+        <div id="mainScreen" class="hidden">
+            <div class="connection-status connected" id="connectionStatus">
+                ✓ Connected to Server
+            </div>
+
+            <div class="room-info">
+                Room Code: <span class="room-code" id="roomCodeDisplay">XXXX</span>
+                <br>
+                <small>Share this code with others to join!</small>
+            </div>
+
+            <div class="participants-online" id="participantsOnline"></div>
+
+            <div class="settings">
+                <div class="setting-item">
+                    <label class="setting-label">Humor Intensity: <span id="humorValue">60</span>%</label>
+                    <input type="range" id="humorSlider" class="slider" min="0" max="100" value="60">
+                </div>
+                <div class="setting-item">
+                    <label class="setting-label">Callback Chance: <span id="callbackValue">40</span>%</label>
+                    <input type="range" id="callbackSlider" class="slider" min="0" max="100" value="40">
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <button id="startListenBtn" class="btn btn-primary">🎤 Start Listening</button>
+                <button id="stopListenBtn" class="btn btn-secondary" disabled>⏹ Stop</button>
+            </div>
+
+            <div id="conversation" class="conversation">
+                <div class="message-pair">
+                    <div class="message original">
+                        <div class="message-label">
+                            <span class="speaker-badge">Example</span>
+                        </div>
+                        <div class="message-text">I'm going to the store later</div>
+                    </div>
+                    <div class="message translated">
+                        <div class="message-label">
+                            <span class="speaker-badge">Translation</span>
+                        </div>
+                        <div class="message-text">I'm going to the <span class="changed-word">snore</span> later</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // This is a sophisticated frontend that would connect to a WebSocket backend
+        // For demonstration, it simulates the backend locally
+
+        class NonSequitRPro {
+            constructor() {
+                this.userName = '';
+                this.roomCode = '';
+                this.isListening = false;
+                this.humorIntensity = 60;
+                this.callbackChance = 40;
+                this.conversationHistory = [];
+                this.keyTopics = new Map();
+                this.recognition = null;
+                this.currentRhyme = '';
+                this.recordingCount = 0;
+                this.socket = null;
+                this.voiceTrainingData = [];
+                this.serverUrl = 'http://localhost:3000'; // Change to your server URL
+                
+                this.setupElements();
+                this.setupEventListeners();
+                this.generateSillyRhyme();
+                this.initializeSocket();
+            }
+
+            initializeSocket() {
+                // Try to connect to server, fall back to local mode if unavailable
+                try {
+                    // For demo without backend, comment this out
+                    // this.socket = io(this.serverUrl);
+                    // this.setupSocketListeners();
+                    console.log('Running in local demo mode');
+                } catch (e) {
+                    console.log('Running in local demo mode');
+                }
+            }
+
+            setupSocketListeners() {
+                if (!this.socket) return;
+
+                this.socket.on('connect', () => {
+                    document.getElementById('connectionStatus').textContent = '✓ Connected to Server';
+                    document.getElementById('connectionStatus').className = 'connection-status connected';
+                });
+
+                this.socket.on('disconnect', () => {
+                    document.getElementById('connectionStatus').textContent = '✗ Disconnected';
+                    document.getElementById('connectionStatus').className = 'connection-status disconnected';
+                });
+
+                this.socket.on('participant-joined', ({ participants }) => {
+                    this.updateParticipantsDisplay(participants);
+                });
+
+                this.socket.on('participant-left', ({ userName, participants }) => {
+                    this.updateParticipantsDisplay(participants);
+                });
+
+                this.socket.on('new-message', (message) => {
+                    if (message.socketId !== this.socket.id) {
+                        this.addMessage(message.original, message.translated, message.changedIndices, message.userName);
+                    }
+                });
+
+                this.socket.on('callback-message', ({ text }) => {
+                    this.addCallbackMessage(text);
+                });
+
+                this.socket.on('conversation-history', (history) => {
+                    history.forEach(msg => {
+                        this.addMessage(msg.original, msg.translated, msg.changedIndices, msg.userName);
+                    });
+                });
+            }
+
+            updateParticipantsDisplay(participants) {
+                this.participantsOnline.innerHTML = participants.map(p => `
+                    <div class="participant-online">
+                        👤 ${p.name} ${p.id === this.socket?.id ? '(You)' : ''}
+                    </div>
+                `).join('');
+            }
+
+            setupElements() {
+                this.setupScreen = document.getElementById('setupScreen');
+                this.trainingScreen = document.getElementById('trainingScreen');
+                this.mainScreen = document.getElementById('mainScreen');
+                this.nameInput = document.getElementById('nameInput');
+                this.roomCodeInput = document.getElementById('roomCodeInput');
+                this.joinBtn = document.getElementById('joinBtn');
+                this.rhymeDisplay = document.getElementById('rhymeDisplay');
+                this.recordingCount = document.getElementById('recordingCount');
+                this.recordRhymeBtn = document.getElementById('recordRhymeBtn');
+                this.skipTrainingBtn = document.getElementById('skipTrainingBtn');
+                this.roomCodeDisplay = document.getElementById('roomCodeDisplay');
+                this.participantsOnline = document.getElementById('participantsOnline');
+                this.conversation = document.getElementById('conversation');
+                this.startListenBtn = document.getElementById('startListenBtn');
+                this.stopListenBtn = document.getElementById('stopListenBtn');
+                this.humorSlider = document.getElementById('humorSlider');
+                this.humorValue = document.getElementById('humorValue');
+                this.callbackSlider = document.getElementById('callbackSlider');
+                this.callbackValue = document.getElementById('callbackValue');
+            }
+
+            setupEventListeners() {
+                this.joinBtn.addEventListener('click', () => this.joinRoom());
+                this.recordRhymeBtn.addEventListener('click', () => this.recordRhyme());
+                this.skipTrainingBtn.addEventListener('click', () => this.skipTraining());
+                this.startListenBtn.addEventListener('click', () => this.startListening());
+                this.stopListenBtn.addEventListener('click', () => this.stopListening());
+                
+                this.humorSlider.addEventListener('input', (e) => {
+                    this.humorIntensity = parseInt(e.target.value);
+                    this.humorValue.textContent = this.humorIntensity;
+                });
+
+                this.callbackSlider.addEventListener('input', (e) => {
+                    this.callbackChance = parseInt(e.target.value);
+                    this.callbackValue.textContent = this.callbackChance;
+                });
+
+                this.nameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.joinRoom();
+                });
+            }
+
+            generateSillyRhyme() {
+                const rhymes = [
+                    "Peter Piper picked a peck of pickled peppers,\nA peck of pickled peppers Peter Piper picked!",
+                    "She sells seashells by the seashore,\nThe shells she sells are seashells, I'm sure!",
+                    "How much wood would a woodchuck chuck,\nIf a woodchuck could chuck wood?",
+                    "Fuzzy Wuzzy was a bear,\nFuzzy Wuzzy had no hair!",
+                    "I scream, you scream,\nWe all scream for ice cream!"
+                ];
+                this.currentRhyme = rhymes[Math.floor(Math.random() * rhymes.length)];
+                this.rhymeDisplay.textContent = this.currentRhyme;
+            }
+
+            joinRoom() {
+                this.userName = this.nameInput.value.trim();
+                if (!this.userName) {
+                    alert('Please enter your name!');
+                    return;
+                }
+
+                this.roomCode = this.roomCodeInput.value.trim().toUpperCase() || this.generateRoomCode();
+                this.roomCodeDisplay.textContent = this.roomCode;
+
+                // Show training screen
+                this.setupScreen.classList.add('hidden');
+                this.trainingScreen.classList.remove('hidden');
+            }
+
+            generateRoomCode() {
+                return Math.random().toString(36).substring(2, 8).toUpperCase();
+            }
+
+            async recordRhyme() {
+                this.recordRhymeBtn.disabled = true;
+                this.recordRhymeBtn.textContent = '🎙️ Recording...';
+
+                // In production, capture actual audio
+                if (this.recognition) {
+                    const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    // Store audio sample for voice profile
+                    this.voiceTrainingData.push({
+                        timestamp: Date.now(),
+                        text: this.currentRhyme
+                    });
+                }
+
+                // Simulate recording
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                this.recordingCount++;
+                document.getElementById('recordingCount').textContent = `${this.recordingCount}/3`;
+
+                if (this.recordingCount >= 3) {
+                    this.completeTraining();
+                } else {
+                    this.recordRhymeBtn.disabled = false;
+                    this.recordRhymeBtn.textContent = '🎙️ Record Again';
+                }
+            }
+
+            completeTraining() {
+                if (this.socket) {
+                    // Send voice training to server
+                    this.socket.emit('join-room', {
+                        userName: this.userName,
+                        roomCode: this.roomCode,
+                        voiceData: this.voiceTrainingData
+                    });
+                }
+                
+                this.trainingScreen.classList.add('hidden');
+                this.mainScreen.classList.remove('hidden');
+                this.updateParticipants();
+                this.setupSpeechRecognition();
+            }
+
+            updateParticipants() {
+                if (this.socket) return; // Socket will handle this
+                
+                // Local mode
+                this.participantsOnline.innerHTML = `
+                    <div class="participant-online">👤 ${this.userName} (You)</div>
+                `;
+            }
+
+            setupSpeechRecognition() {
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    alert('Speech recognition not supported');
+                    return;
+                }
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+                this.recognition.continuous = true;
+                this.recognition.interimResults = false;
+
+                this.recognition.onresult = (event) => {
+                    const result = event.results[event.results.length - 1];
+                    if (result.isFinal) {
+                        const transcript = result[0].transcript.trim();
+                        if (transcript) {
+                            this.processTranscript(transcript);
+                        }
+                    }
+                };
+            }
+
+            startListening() {
+                if (this.recognition) {
+                    this.recognition.start();
+                    this.isListening = true;
+                    this.startListenBtn.disabled = true;
+                    this.stopListenBtn.disabled = false;
+                    this.startListenBtn.classList.add('listening');
+                }
+            }
+
+            stopListening() {
+                if (this.recognition) {
+                    this.recognition.stop();
+                    this.isListening = false;
+                    this.startListenBtn.disabled = false;
+                    this.stopListenBtn.disabled = true;
+                    this.startListenBtn.classList.remove('listening');
+                }
+            }
+
+            processTranscript(text) {
+                const translation = this.createFunnyTranslation(text);
+                this.addMessage(text, translation.text, translation.changedIndices, this.userName);
+                
+                // Broadcast to server if connected
+                if (this.socket?.connected) {
+                    this.socket.emit('new-transcript', {
+                        original: text,
+                        translated: translation.text,
+                        changedIndices: translation.changedIndices,
+                        speakerConfidence: 0.95 // Would come from voice recognition
+                    });
+                }
+                
+                // Store in local history
+                this.conversationHistory.push({ original: text, translated: translation.text });
+                if (this.conversationHistory.length > 15) {
+                    this.conversationHistory.shift();
+                }
+
+                // Maybe add a callback
+                if (Math.random() * 100 < this.callbackChance && this.conversationHistory.length > 2) {
+                    setTimeout(() => {
+                        if (this.socket?.connected) {
+                            this.socket.emit('request-callback');
+                        } else {
+                            this.addCallback();
+                        }
+                    }, 2000);
+                }
+            }
+
+            createFunnyTranslation(text) {
+                const words = text.split(' ');
+                const threshold = this.humorIntensity / 100;
+                let changedIndices = [];
+                
+                // Strategic word replacement - target key words for maximum impact
+                const result = words.map((word, index) => {
+                    const cleanWord = word.toLowerCase().replace(/[.,!?;:]$/, '');
+                    const punctuation = word.match(/[.,!?;:]$/)?.[0] || '';
+                    
+                    // Higher chance to change nouns, verbs, and important words
+                    const isKeyWord = this.isImportantWord(cleanWord);
+                    const changeChance = isKeyWord ? threshold * 1.5 : threshold * 0.5;
+                    
+                    if (Math.random() < changeChance) {
+                        const replacement = this.getFunnyReplacement(cleanWord);
+                        if (replacement && replacement !== cleanWord) {
+                            changedIndices.push(index);
+                            // Track this topic for callbacks
+                            this.keyTopics.set(cleanWord, replacement);
+                            return replacement + punctuation;
+                        }
+                    }
+                    
+                    return word;
+                });
+
+                return {
+                    text: result.join(' '),
+                    changedIndices: changedIndices
+                };
+            }
+
+            isImportantWord(word) {
+                // Check if word is likely a noun or verb (simplified)
+                const commonWords = ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'but', 'or', 'and', 'if', 'then'];
+                return !commonWords.includes(word) && word.length > 3;
+            }
+
+            getFunnyReplacement(word) {
+                const mishearings = {
+                    'meeting': 'eating', 'later': 'gator', 'store': 'snore',
+                    'coffee': 'toffee', 'work': 'quirk', 'think': 'stink',
+                    'going': 'gong', 'dinner': 'winner', 'lunch': 'bunch',
+                    'phone': 'bone', 'email': 'snail', 'problem': 'goblin',
+                    'important': 'imported', 'difficult': 'delicious',
+                    'understand': 'underhand', 'explain': 'complain',
+                    'money': 'honey', 'ready': 'freddy', 'busy': 'dizzy',
+                    'happy': 'snappy', 'tired': 'wired', 'great': 'grate',
+                    'nice': 'mice', 'friend': 'fiend', 'talking': 'walking'
+                };
+
+                return mishearings[word] || word;
+            }
+
+            addCallback() {
+                if (this.keyTopics.size === 0) return;
+
+                // Pick a random earlier topic
+                const topics = Array.from(this.keyTopics.entries());
+                const [original, replacement] = topics[Math.floor(Math.random() * topics.length)];
+
+                const callbacks = [
+                    `Wait, did someone say ${replacement}?`,
+                    `Going back to that ${replacement} thing...`,
+                    `I'm still thinking about ${replacement}!`,
+                    `${replacement}? ${replacement}!`,
+                    `Remember when we were talking about ${replacement}?`
+                ];
+
+                const callbackText = callbacks[Math.floor(Math.random() * callbacks.length)];
+                this.addCallbackMessage(callbackText);
+            }
+
+            addMessage(original, translated, changedIndices, speakerName = this.userName) {
+                const words = translated.split(' ');
+                const highlightedText = words.map((word, i) => {
+                    if (changedIndices.includes(i)) {
+                        return `<span class="changed-word">${word}</span>`;
+                    }
+                    return word;
+                }).join(' ');
+
+                const messageHTML = `
+                    <div class="message-pair">
+                        <div class="message original">
+                            <div class="message-label">
+                                <span class="speaker-badge">${this.escapeHtml(speakerName)}</span>
+                            </div>
+                            <div class="message-text">${this.escapeHtml(original)}</div>
+                        </div>
+                        <div class="message translated">
+                            <div class="message-label">
+                                <span class="speaker-badge">Translation</span>
+                            </div>
+                            <div class="message-text">${highlightedText}</div>
+                        </div>
+                    </div>
+                `;
+
+                this.conversation.insertAdjacentHTML('beforeend', messageHTML);
+                this.conversation.scrollTop = this.conversation.scrollHeight;
+            }
+
+            addCallbackMessage(text) {
+                const messageHTML = `
+                    <div class="message-pair">
+                        <div class="message callback">
+                            <div class="message-label">
+                                <span class="speaker-badge">🔄 Callback</span>
+                            </div>
+                            <div class="message-text">${text}</div>
+                        </div>
+                    </div>
+                `;
+
+                this.conversation.insertAdjacentHTML('beforeend', messageHTML);
+                this.conversation.scrollTop = this.conversation.scrollHeight;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new NonSequitRPro();
+        });
+    </script>
+</body>
+</html>
