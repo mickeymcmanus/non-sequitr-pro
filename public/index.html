@@ -540,7 +540,7 @@
                 this.roomCodeInput = document.getElementById('roomCodeInput');
                 this.joinBtn = document.getElementById('joinBtn');
                 this.rhymeDisplay = document.getElementById('rhymeDisplay');
-                this.recordingCount = document.getElementById('recordingCount');
+                this.recordingCountEl = document.getElementById('recordingCount');
                 this.recordRhymeBtn = document.getElementById('recordRhymeBtn');
                 this.skipTrainingBtn = document.getElementById('skipTrainingBtn');
                 this.roomCodeDisplay = document.getElementById('roomCodeDisplay');
@@ -609,23 +609,27 @@
 
             async recordRhyme() {
                 this.recordRhymeBtn.disabled = true;
-                this.recordRhymeBtn.textContent = '🎙️ Recording...';
+                this.recordRhymeBtn.textContent = '🎙️ Recording... Keep speaking!';
 
                 // In production, capture actual audio
-                if (this.recognition) {
+                try {
                     const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     // Store audio sample for voice profile
                     this.voiceTrainingData.push({
                         timestamp: Date.now(),
                         text: this.currentRhyme
                     });
+                } catch (e) {
+                    console.log('Microphone access:', e);
                 }
 
-                // Simulate recording
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                // Record for 10 seconds to give time for full rhyme
+                await new Promise(resolve => setTimeout(resolve, 10000));
 
                 this.recordingCount++;
-                document.getElementById('recordingCount').textContent = `${this.recordingCount}/3`;
+                if (this.recordingCountEl) {
+                    this.recordingCountEl.textContent = `${this.recordingCount}/3`;
+                }
 
                 if (this.recordingCount >= 3) {
                     this.completeTraining();
