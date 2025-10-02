@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Non-sequitR Pro</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -505,7 +506,10 @@
                 this.usedRhymes = [];
                 this.isRecording = false;
                 this.silenceTimeout = null;
-                this.serverUrl = 'http://localhost:3000'; // Change to your server URL
+                
+                // CHANGE THIS TO YOUR RENDER URL!
+                // Example: 'https://non-sequitr-pro.onrender.com'
+                this.serverUrl = window.location.origin; // Auto-detect if hosted
                 
                 this.setupElements();
                 this.setupEventListeners();
@@ -514,14 +518,18 @@
             }
 
             initializeSocket() {
-                // Try to connect to server, fall back to local mode if unavailable
+                // Connect to server for multi-user support
                 try {
-                    // For production, uncomment these lines:
-                    // this.socket = io(this.serverUrl);
-                    // this.setupSocketListeners();
-                    console.log('Running in local demo mode - to enable multi-user, connect to server');
+                    if (typeof io !== 'undefined') {
+                        this.socket = io(this.serverUrl);
+                        this.setupSocketListeners();
+                        console.log('Connecting to server at:', this.serverUrl);
+                    } else {
+                        console.log('Socket.IO not loaded - running in local mode');
+                    }
                 } catch (e) {
-                    console.log('Running in local demo mode');
+                    console.error('Socket connection error:', e);
+                    console.log('Falling back to local mode');
                 }
             }
 
