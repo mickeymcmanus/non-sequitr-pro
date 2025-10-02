@@ -437,12 +437,12 @@
 
             <div class="settings">
                 <div class="setting-item">
-                    <label class="setting-label">Humor Intensity: <span id="humorValue">60</span>%</label>
-                    <input type="range" id="humorSlider" class="slider" min="0" max="100" value="60">
+                    <label class="setting-label">Humor Intensity: <span id="humorValue">40</span>%</label>
+                    <input type="range" id="humorSlider" class="slider" min="0" max="100" value="40">
                 </div>
                 <div class="setting-item">
-                    <label class="setting-label">Callback Chance: <span id="callbackValue">40</span>%</label>
-                    <input type="range" id="callbackSlider" class="slider" min="0" max="100" value="40">
+                    <label class="setting-label">Callback Chance: <span id="callbackValue">25</span>%</label>
+                    <input type="range" id="callbackSlider" class="slider" min="0" max="100" value="25">
                 </div>
             </div>
 
@@ -457,13 +457,27 @@
                         <div class="message-label">
                             <span class="speaker-badge">Example</span>
                         </div>
-                        <div class="message-text">I'm going to the store later</div>
+                        <div class="message-text">Let's meet for coffee later</div>
                     </div>
                     <div class="message translated">
                         <div class="message-label">
                             <span class="speaker-badge">Translation</span>
                         </div>
-                        <div class="message-text">I'm going to the <span class="changed-word">snore</span> later</div>
+                        <div class="message-text">Let's meet for <span class="changed-word">toffee</span> later</div>
+                    </div>
+                </div>
+                <div class="message-pair">
+                    <div class="message original">
+                        <div class="message-label">
+                            <span class="speaker-badge">Example 2</span>
+                        </div>
+                        <div class="message-text">I have an important meeting today</div>
+                    </div>
+                    <div class="message translated">
+                        <div class="message-label">
+                            <span class="speaker-badge">Translation</span>
+                        </div>
+                        <div class="message-text">I have an <span class="changed-word">imported</span> meeting today, reminds me of toffee</div>
                     </div>
                 </div>
             </div>
@@ -479,8 +493,8 @@
                 this.userName = '';
                 this.roomCode = '';
                 this.isListening = false;
-                this.humorIntensity = 60;
-                this.callbackChance = 40;
+                this.humorIntensity = 40;
+                this.callbackChance = 25;
                 this.conversationHistory = [];
                 this.keyTopics = new Map();
                 this.recognition = null;
@@ -910,26 +924,21 @@
                         original: text,
                         translated: translation.text,
                         changedIndices: translation.changedIndices,
-                        speakerConfidence: 0.95 // Would come from voice recognition
+                        speakerConfidence: 0.95
                     });
                 }
                 
                 // Store in local history
-                this.conversationHistory.push({ original: text, translated: translation.text });
+                this.conversationHistory.push({ 
+                    original: text, 
+                    translated: translation.text,
+                    speaker: this.userName 
+                });
                 if (this.conversationHistory.length > 15) {
                     this.conversationHistory.shift();
                 }
 
-                // Maybe add a callback
-                if (Math.random() * 100 < this.callbackChance && this.conversationHistory.length > 2) {
-                    setTimeout(() => {
-                        if (this.socket?.connected) {
-                            this.socket.emit('request-callback');
-                        } else {
-                            this.addCallback();
-                        }
-                    }, 2000);
-                }
+                // Remove the separate callback system - it's now integrated into translations
             }
 
             createFunnyTranslation(text) {
@@ -937,19 +946,33 @@
                 const threshold = this.humorIntensity / 100;
                 let changedIndices = [];
                 
-                // Strategic word replacement - target key words for maximum impact
+                // Decide if we should weave in a callback (only after 5+ messages)
+                const shouldCallback = this.conversationHistory.length >= 5 && 
+                                      this.keyTopics.size > 0 && 
+                                      Math.random() * 100 < (this.callbackChance / 2);
+                
+                // Strategic word replacement - target 1-3 key words for maximum impact
+                const targetCount = Math.floor(Math.random() * 2) + 1; // 1-2 words
+                let changesMade = 0;
+                
                 const result = words.map((word, index) => {
                     const cleanWord = word.toLowerCase().replace(/[.,!?;:]$/, '');
                     const punctuation = word.match(/[.,!?;:]$/)?.[0] || '';
                     
+                    // Stop changing if we've hit our target
+                    if (changesMade >= targetCount) {
+                        return word;
+                    }
+                    
                     // Higher chance to change nouns, verbs, and important words
                     const isKeyWord = this.isImportantWord(cleanWord);
-                    const changeChance = isKeyWord ? threshold * 1.5 : threshold * 0.5;
+                    const changeChance = isKeyWord ? threshold : threshold * 0.3;
                     
-                    if (Math.random() < changeChance) {
+                    if (isKeyWord && Math.random() < changeChance) {
                         const replacement = this.getFunnyReplacement(cleanWord);
                         if (replacement && replacement !== cleanWord) {
                             changedIndices.push(index);
+                            changesMade++;
                             // Track this topic for callbacks
                             this.keyTopics.set(cleanWord, replacement);
                             return replacement + punctuation;
@@ -959,8 +982,29 @@
                     return word;
                 });
 
+                let finalText = result.join(' ');
+
+                // Weave in a callback naturally at the end (like real conversation)
+                if (shouldCallback) {
+                    const topics = Array.from(this.keyTopics.entries());
+                    const [original, replacement] = topics[Math.floor(Math.random() * topics.length)];
+                    
+                    const callbackPhrases = [
+                        `, just like that ${replacement} thing`,
+                        `, reminds me of ${replacement}`,
+                        `, similar to ${replacement}`,
+                        `... speaking of ${replacement}`,
+                        `, kind of like ${replacement}`,
+                        `. Wait, ${replacement}?`,
+                        `, but what about ${replacement}?`
+                    ];
+                    
+                    const callback = callbackPhrases[Math.floor(Math.random() * callbackPhrases.length)];
+                    finalText += callback;
+                }
+
                 return {
-                    text: result.join(' '),
+                    text: finalText,
                     changedIndices: changedIndices
                 };
             }
@@ -973,18 +1017,48 @@
 
             getFunnyReplacement(word) {
                 const mishearings = {
-                    'meeting': 'eating', 'later': 'gator', 'store': 'snore',
-                    'coffee': 'toffee', 'work': 'quirk', 'think': 'stink',
-                    'going': 'gong', 'dinner': 'winner', 'lunch': 'bunch',
-                    'phone': 'bone', 'email': 'snail', 'problem': 'goblin',
-                    'important': 'imported', 'difficult': 'delicious',
-                    'understand': 'underhand', 'explain': 'complain',
-                    'money': 'honey', 'ready': 'freddy', 'busy': 'dizzy',
-                    'happy': 'snappy', 'tired': 'wired', 'great': 'grate',
-                    'nice': 'mice', 'friend': 'fiend', 'talking': 'walking'
+                    'meeting': 'eating', 'later': 'gator', 'store': 'snore', 'going': 'gong',
+                    'coffee': 'toffee', 'work': 'quirk', 'think': 'stink', 'talking': 'walking',
+                    'dinner': 'winner', 'lunch': 'bunch', 'phone': 'bone', 'email': 'snail',
+                    'problem': 'goblin', 'important': 'imported', 'difficult': 'delicious',
+                    'understand': 'underhand', 'explain': 'complain', 'money': 'honey',
+                    'ready': 'freddy', 'busy': 'dizzy', 'happy': 'snappy', 'tired': 'wired',
+                    'great': 'grate', 'nice': 'mice', 'friend': 'fiend', 'today': 'toupee',
+                    'tomorrow': 'sorrow', 'yesterday': 'leather day', 'morning': 'mourning',
+                    'evening': 'leaving', 'night': 'knight', 'day': 'hay', 'week': 'weak',
+                    'month': 'moth', 'year': 'ear', 'time': 'thyme', 'hour': 'flower',
+                    'minute': 'my newt', 'second': 'reckoned', 'early': 'pearly',
+                    'late': 'gate', 'soon': 'spoon', 'now': 'cow', 'then': 'hen',
+                    'here': 'beer', 'there': 'bear', 'where': 'wear', 'everywhere': 'underwear',
+                    'home': 'gnome', 'house': 'mouse', 'room': 'broom', 'door': 'floor',
+                    'window': 'win dough', 'wall': 'ball', 'floor': 'door', 'ceiling': 'feeling',
+                    'office': 'orifice', 'desk': 'deck', 'chair': 'hair', 'table': 'stable',
+                    'computer': 'commuter', 'keyboard': 'ski board', 'mouse': 'house',
+                    'screen': 'scream', 'phone': 'clone', 'call': 'mall', 'text': 'vex',
+                    'message': 'sausage', 'email': 'female', 'send': 'blend', 'receive': 'believe',
+                    'read': 'bread', 'write': 'kite', 'type': 'pipe', 'click': 'lick',
+                    'open': 'hoping', 'close': 'clothes', 'save': 'shave', 'delete': 'athlete',
+                    'food': 'mood', 'eat': 'heat', 'drink': 'shrink', 'cook': 'book',
+                    'meal': 'wheel', 'breakfast': 'neck fast', 'snack': 'shack',
+                    'hungry': 'angry', 'thirsty': 'thirty', 'full': 'bull', 'empty': 'tempty',
+                    'hot': 'pot', 'cold': 'gold', 'warm': 'worm', 'cool': 'pool',
+                    'fast': 'mast', 'slow': 'blow', 'quick': 'thick', 'easy': 'cheesy',
+                    'hard': 'card', 'simple': 'pimple', 'complex': 'perplex',
+                    'good': 'hood', 'bad': 'dad', 'better': 'wetter', 'worse': 'purse',
+                    'best': 'nest', 'worst': 'burst', 'right': 'kite', 'wrong': 'song',
+                    'true': 'glue', 'false': 'waltz', 'real': 'eel', 'fake': 'lake',
+                    'person': 'version', 'people': 'steeple', 'man': 'pan', 'woman': 'roman',
+                    'child': 'mild', 'baby': 'gravy', 'family': 'famine', 'parent': 'apparent',
+                    'brother': 'mother', 'sister': 'blister', 'mother': 'other', 'father': 'lather',
+                    'love': 'dove', 'hate': 'plate', 'like': 'bike', 'want': 'haunt',
+                    'need': 'weed', 'have': 'wave', 'get': 'pet', 'make': 'snake',
+                    'take': 'cake', 'give': 'live', 'tell': 'yell', 'say': 'hay',
+                    'ask': 'mask', 'know': 'snow', 'understand': 'underhand',
+                    'remember': 'dismember', 'forget': 'regret', 'learn': 'fern',
+                    'teach': 'beach', 'study': 'buddy', 'practice': 'malpractice'
                 };
 
-                return mishearings[word] || word;
+                return mishearings[word] || null;
             }
 
             addCallback() {
