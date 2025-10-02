@@ -348,6 +348,28 @@
         .listening {
             animation: pulse 2s infinite;
         }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -466,6 +488,9 @@
                 this.recordingCount = 0;
                 this.socket = null;
                 this.voiceTrainingData = [];
+                this.usedRhymes = [];
+                this.isRecording = false;
+                this.silenceTimeout = null;
                 this.serverUrl = 'http://localhost:3000'; // Change to your server URL
                 
                 this.setupElements();
@@ -477,10 +502,10 @@
             initializeSocket() {
                 // Try to connect to server, fall back to local mode if unavailable
                 try {
-                    // For demo without backend, comment this out
+                    // For production, uncomment these lines:
                     // this.socket = io(this.serverUrl);
                     // this.setupSocketListeners();
-                    console.log('Running in local demo mode');
+                    console.log('Running in local demo mode - to enable multi-user, connect to server');
                 } catch (e) {
                     console.log('Running in local demo mode');
                 }
@@ -499,37 +524,92 @@
                     document.getElementById('connectionStatus').className = 'connection-status disconnected';
                 });
 
-                this.socket.on('participant-joined', ({ participants }) => {
+                this.socket.on('participant-joined', ({ participants, newParticipant }) => {
                     this.updateParticipantsDisplay(participants);
+                    if (newParticipant && newParticipant.name !== this.userName) {
+                        this.showNotification(`${newParticipant.name} joined the room! 🎉`);
+                    }
                 });
 
                 this.socket.on('participant-left', ({ userName, participants }) => {
                     this.updateParticipantsDisplay(participants);
+                    this.showNotification(`${userName} left the room`);
                 });
 
                 this.socket.on('new-message', (message) => {
+                    // Only display messages from others
                     if (message.socketId !== this.socket.id) {
                         this.addMessage(message.original, message.translated, message.changedIndices, message.userName);
+                        
+                        // Store in local history for callbacks
+                        this.conversationHistory.push({ 
+                            original: message.original, 
+                            translated: message.translated,
+                            speaker: message.userName 
+                        });
+                        if (this.conversationHistory.length > 15) {
+                            this.conversationHistory.shift();
+                        }
                     }
                 });
 
-                this.socket.on('callback-message', ({ text }) => {
-                    this.addCallbackMessage(text);
+                this.socket.on('callback-message', ({ text, speaker }) => {
+                    this.addCallbackMessage(text, speaker);
                 });
 
                 this.socket.on('conversation-history', (history) => {
+                    // Load existing conversation when joining
                     history.forEach(msg => {
                         this.addMessage(msg.original, msg.translated, msg.changedIndices, msg.userName);
                     });
+                    if (history.length > 0) {
+                        this.showNotification('Loaded conversation history');
+                    }
                 });
             }
 
             updateParticipantsDisplay(participants) {
-                this.participantsOnline.innerHTML = participants.map(p => `
-                    <div class="participant-online">
-                        👤 ${p.name} ${p.id === this.socket?.id ? '(You)' : ''}
-                    </div>
-                `).join('');
+                const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22'];
+                
+                this.participantsOnline.innerHTML = participants.map((p, index) => {
+                    const color = colors[index % colors.length];
+                    const isYou = this.socket ? (p.id === this.socket.id) : (p.name === this.userName);
+                    return `
+                        <div class="participant-online" style="border-left: 3px solid ${color}">
+                            <span style="font-size: 1.5rem;">${this.getAvatarEmoji(index)}</span>
+                            ${p.name} ${isYou ? '(You)' : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            getAvatarEmoji(index) {
+                const avatars = ['🎭', '🎪', '🎨', '🎬', '🎤', '🎧', '🎸', '🎹', '🎺', '🎻'];
+                return avatars[index % avatars.length];
+            }
+
+            showNotification(message) {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: linear-gradient(45deg, rgba(46, 204, 113, 0.95), rgba(52, 152, 219, 0.95));
+                    color: white;
+                    padding: 1rem 1.5rem;
+                    border-radius: 10px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                    z-index: 9999;
+                    animation: slideInRight 0.5s ease;
+                    font-weight: bold;
+                `;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.animation = 'slideOutRight 0.5s ease';
+                    setTimeout(() => notification.remove(), 500);
+                }, 3000);
             }
 
             setupElements() {
@@ -578,14 +658,28 @@
 
             generateSillyRhyme() {
                 const rhymes = [
-                    "Peter Piper picked a peck of pickled peppers,\nA peck of pickled peppers Peter Piper picked!",
-                    "She sells seashells by the seashore,\nThe shells she sells are seashells, I'm sure!",
-                    "How much wood would a woodchuck chuck,\nIf a woodchuck could chuck wood?",
-                    "Fuzzy Wuzzy was a bear,\nFuzzy Wuzzy had no hair!",
-                    "I scream, you scream,\nWe all scream for ice cream!"
+                    "Peter Piper picked a peck of pickled peppers",
+                    "She sells seashells by the seashore",
+                    "How much wood would a woodchuck chuck",
+                    "Fuzzy Wuzzy was a bear, Fuzzy Wuzzy had no hair",
+                    "I scream, you scream, we all scream for ice cream",
+                    "Red lorry, yellow lorry, red lorry, yellow lorry",
+                    "Unique New York, you need New York, you know you need unique New York",
+                    "Irish wristwatch, Swiss wristwatch",
+                    "Toy boat, toy boat, toy boat",
+                    "Six sleek swans swam swiftly southwards"
                 ];
-                this.currentRhyme = rhymes[Math.floor(Math.random() * rhymes.length)];
-                this.rhymeDisplay.textContent = this.currentRhyme;
+                
+                // Pick a random rhyme that hasn't been used yet
+                const availableRhymes = rhymes.filter(r => !this.usedRhymes.includes(r));
+                if (availableRhymes.length === 0) {
+                    this.usedRhymes = []; // Reset if all used
+                }
+                
+                const rhyme = availableRhymes[Math.floor(Math.random() * availableRhymes.length)] || rhymes[0];
+                this.usedRhymes.push(rhyme);
+                this.currentRhyme = rhyme;
+                this.rhymeDisplay.textContent = rhyme;
             }
 
             joinRoom() {
@@ -595,12 +689,38 @@
                     return;
                 }
 
-                this.roomCode = this.roomCodeInput.value.trim().toUpperCase() || this.generateRoomCode();
-                this.roomCodeDisplay.textContent = this.roomCode;
-
-                // Show training screen
-                this.setupScreen.classList.add('hidden');
-                this.trainingScreen.classList.remove('hidden');
+                const inputRoomCode = this.roomCodeInput.value.trim().toUpperCase();
+                
+                if (inputRoomCode) {
+                    // User entered a room code - join existing room
+                    this.roomCode = inputRoomCode;
+                    this.roomCodeDisplay.textContent = this.roomCode;
+                    
+                    // If socket is available, it will verify the room exists
+                    if (this.socket?.connected) {
+                        this.socket.emit('check-room', { roomCode: this.roomCode }, (response) => {
+                            if (response.exists) {
+                                // Room exists, proceed to training
+                                this.setupScreen.classList.add('hidden');
+                                this.trainingScreen.classList.remove('hidden');
+                            } else {
+                                alert(`Room ${this.roomCode} not found. Creating new room with this code.`);
+                                this.setupScreen.classList.add('hidden');
+                                this.trainingScreen.classList.remove('hidden');
+                            }
+                        });
+                    } else {
+                        // Local mode - just proceed
+                        this.setupScreen.classList.add('hidden');
+                        this.trainingScreen.classList.remove('hidden');
+                    }
+                } else {
+                    // No room code entered - create new room
+                    this.roomCode = this.generateRoomCode();
+                    this.roomCodeDisplay.textContent = this.roomCode;
+                    this.setupScreen.classList.add('hidden');
+                    this.trainingScreen.classList.remove('hidden');
+                }
             }
 
             generateRoomCode() {
@@ -608,23 +728,95 @@
             }
 
             async recordRhyme() {
+                if (this.isRecording) return;
+                
+                this.isRecording = true;
                 this.recordRhymeBtn.disabled = true;
-                this.recordRhymeBtn.textContent = '🎙️ Recording... Keep speaking!';
+                this.recordRhymeBtn.textContent = '🎙️ Listening... Speak now!';
 
-                // In production, capture actual audio
-                try {
-                    const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    // Store audio sample for voice profile
-                    this.voiceTrainingData.push({
-                        timestamp: Date.now(),
-                        text: this.currentRhyme
-                    });
-                } catch (e) {
-                    console.log('Microphone access:', e);
+                // Setup speech recognition for auto-detection
+                if (!this.trainingRecognition) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (!SpeechRecognition) {
+                        alert('Speech recognition not supported');
+                        return;
+                    }
+                    this.trainingRecognition = new SpeechRecognition();
+                    this.trainingRecognition.continuous = true;
+                    this.trainingRecognition.interimResults = true;
                 }
 
-                // Record for 10 seconds to give time for full rhyme
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                let lastSpeechTime = Date.now();
+                let spokenText = '';
+
+                this.trainingRecognition.onresult = (event) => {
+                    lastSpeechTime = Date.now();
+                    
+                    // Get the latest result
+                    const result = event.results[event.results.length - 1];
+                    const transcript = result[0].transcript;
+                    
+                    if (result.isFinal) {
+                        spokenText += transcript + ' ';
+                    }
+                    
+                    // Reset silence timeout
+                    if (this.silenceTimeout) {
+                        clearTimeout(this.silenceTimeout);
+                    }
+                    
+                    // Check for 2 seconds of silence to auto-stop
+                    this.silenceTimeout = setTimeout(() => {
+                        if (Date.now() - lastSpeechTime >= 2000 && spokenText.trim().length > 10) {
+                            this.stopRecording(spokenText);
+                        }
+                    }, 2000);
+                };
+
+                this.trainingRecognition.onerror = (event) => {
+                    console.error('Recognition error:', event.error);
+                    if (event.error === 'no-speech') {
+                        setTimeout(() => {
+                            if (this.isRecording && spokenText.trim().length > 10) {
+                                this.stopRecording(spokenText);
+                            }
+                        }, 1000);
+                    }
+                };
+
+                try {
+                    this.trainingRecognition.start();
+                } catch (e) {
+                    console.error('Start error:', e);
+                    this.isRecording = false;
+                    this.recordRhymeBtn.disabled = false;
+                    this.recordRhymeBtn.textContent = '🎙️ Record Rhyme';
+                }
+            }
+
+            stopRecording(spokenText) {
+                if (!this.isRecording) return;
+                
+                this.isRecording = false;
+                
+                try {
+                    if (this.trainingRecognition) {
+                        this.trainingRecognition.stop();
+                    }
+                } catch (e) {
+                    console.error('Stop error:', e);
+                }
+                
+                if (this.silenceTimeout) {
+                    clearTimeout(this.silenceTimeout);
+                }
+
+                // Store voice training data
+                this.voiceTrainingData.push({
+                    timestamp: Date.now(),
+                    text: spokenText.trim(),
+                    expectedRhyme: this.currentRhyme
+                });
 
                 this.recordingCount++;
                 if (this.recordingCountEl) {
@@ -634,8 +826,10 @@
                 if (this.recordingCount >= 3) {
                     this.completeTraining();
                 } else {
+                    // Generate a new rhyme for the next recording
+                    this.generateSillyRhyme();
                     this.recordRhymeBtn.disabled = false;
-                    this.recordRhymeBtn.textContent = '🎙️ Record Again';
+                    this.recordRhymeBtn.textContent = '🎙️ Record Next Rhyme';
                 }
             }
 
@@ -794,22 +988,41 @@
             }
 
             addCallback() {
-                if (this.keyTopics.size === 0) return;
+                if (this.keyTopics.size === 0 && this.conversationHistory.length === 0) return;
 
-                // Pick a random earlier topic
-                const topics = Array.from(this.keyTopics.entries());
-                const [original, replacement] = topics[Math.floor(Math.random() * topics.length)];
+                // Pick a random earlier topic or speaker
+                let callbackText;
+                
+                if (this.keyTopics.size > 0 && Math.random() < 0.6) {
+                    // Reference a misheard word
+                    const topics = Array.from(this.keyTopics.entries());
+                    const [original, replacement] = topics[Math.floor(Math.random() * topics.length)];
 
-                const callbacks = [
-                    `Wait, did someone say ${replacement}?`,
-                    `Going back to that ${replacement} thing...`,
-                    `I'm still thinking about ${replacement}!`,
-                    `${replacement}? ${replacement}!`,
-                    `Remember when we were talking about ${replacement}?`
-                ];
+                    const callbacks = [
+                        `Wait, did someone say ${replacement}?`,
+                        `Going back to that ${replacement} thing...`,
+                        `I'm still thinking about ${replacement}!`,
+                        `${replacement}? ${replacement}!`,
+                        `Remember when we were talking about ${replacement}?`,
+                        `Hold on, ${replacement}? Really?`,
+                        `Can we circle back to ${replacement}?`
+                    ];
+                    callbackText = callbacks[Math.floor(Math.random() * callbacks.length)];
+                } else if (this.conversationHistory.length > 0) {
+                    // Riff on an earlier speaker's message
+                    const oldMessage = this.conversationHistory[Math.floor(Math.random() * this.conversationHistory.length)];
+                    const riffs = [
+                        `Like ${oldMessage.speaker || 'someone'} said earlier...`,
+                        `That reminds me of what ${oldMessage.speaker || 'someone'} mentioned`,
+                        `${oldMessage.speaker || 'Someone'} had a point about that`,
+                        `Wait, wasn't ${oldMessage.speaker || 'someone'} talking about this?`
+                    ];
+                    callbackText = riffs[Math.floor(Math.random() * riffs.length)];
+                }
 
-                const callbackText = callbacks[Math.floor(Math.random() * callbacks.length)];
-                this.addCallbackMessage(callbackText);
+                if (callbackText) {
+                    this.addCallbackMessage(callbackText, this.userName);
+                }
             }
 
             addMessage(original, translated, changedIndices, speakerName = this.userName) {
@@ -842,14 +1055,15 @@
                 this.conversation.scrollTop = this.conversation.scrollHeight;
             }
 
-            addCallbackMessage(text) {
+            addCallbackMessage(text, speakerName = 'Echo Bot') {
                 const messageHTML = `
                     <div class="message-pair">
                         <div class="message callback">
                             <div class="message-label">
-                                <span class="speaker-badge">🔄 Callback</span>
+                                <span class="speaker-badge">🔄 ${this.escapeHtml(speakerName)}</span>
+                                Callback
                             </div>
-                            <div class="message-text">${text}</div>
+                            <div class="message-text">${this.escapeHtml(text)}</div>
                         </div>
                     </div>
                 `;
