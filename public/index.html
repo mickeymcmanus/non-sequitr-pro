@@ -716,33 +716,18 @@
                 if (inputRoomCode) {
                     // User entered a room code - join existing room
                     this.roomCode = inputRoomCode;
-                    this.roomCodeDisplay.textContent = this.roomCode;
-                    
-                    // If socket is available, it will verify the room exists
-                    if (this.socket?.connected) {
-                        this.socket.emit('check-room', { roomCode: this.roomCode }, (response) => {
-                            if (response.exists) {
-                                // Room exists, proceed to training
-                                this.setupScreen.classList.add('hidden');
-                                this.trainingScreen.classList.remove('hidden');
-                            } else {
-                                alert(`Room ${this.roomCode} not found. Creating new room with this code.`);
-                                this.setupScreen.classList.add('hidden');
-                                this.trainingScreen.classList.remove('hidden');
-                            }
-                        });
-                    } else {
-                        // Local mode - just proceed
-                        this.setupScreen.classList.add('hidden');
-                        this.trainingScreen.classList.remove('hidden');
-                    }
+                    console.log('Attempting to join room:', this.roomCode);
                 } else {
                     // No room code entered - create new room
                     this.roomCode = this.generateRoomCode();
-                    this.roomCodeDisplay.textContent = this.roomCode;
-                    this.setupScreen.classList.add('hidden');
-                    this.trainingScreen.classList.remove('hidden');
+                    console.log('Creating new room:', this.roomCode);
                 }
+                
+                this.roomCodeDisplay.textContent = this.roomCode;
+                
+                // Show training screen immediately (don't wait for server check)
+                this.setupScreen.classList.add('hidden');
+                this.trainingScreen.classList.remove('hidden');
             }
 
             generateRoomCode() {
