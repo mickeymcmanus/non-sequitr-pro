@@ -11,7 +11,7 @@ const io = socketIO(server, {
         methods: ["GET", "POST"]
     }
 });
-
+//refresh
 app.use(cors());
 app.use(express.static('public'));
 
