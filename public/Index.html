@@ -840,11 +840,6 @@
                 }
             }
 
-            skipTraining() {
-                console.log('Skipping voice training');
-                this.completeTraining();
-            }
-
             completeTraining() {
                 if (this.socket) {
                     // Send voice training to server
